@@ -15,9 +15,6 @@ df_dictionary = {
     'personal_testing_everything': df_personal_testing_everything
 }
 
-st.write(df_personal_testing_query_rewriting)
-st.write(df_personal_testing_everything)
-
 col1, col2, col3 = st.columns(3)
 with col1:
     T5_config = st.radio("What T5 config would you like to see?", ('base', 'personal'))
