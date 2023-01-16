@@ -1,39 +1,35 @@
-import pandas as pd
 import streamlit as st
-import plotly.graph_objects as go
-from processing_data import clean_data, split_df
+from show_data import *
+from graphs.everything import everything
+from graphs.base_vs_personal import base_vs_personal
+from graphs.automatic_vs_canonical import automatic_vs_canonical
+from graphs.raw_vs_rewritten import raw_vs_rewritten
+from graphs.metric_comparison import metric_comparison
 st.set_page_config(layout="wide")
 
-df = pd.read_csv("data/Query-Rewriting.csv")
-df = clean_data(df)
+df = clean_data_2(pd.read_csv("data/small.csv"))
+df_dictionary = split_df(df)
+BM25_MonoBERT_df = df_dictionary.get("base_automatic")
+BM25_MonoBERT_df = df.drop(['bleu_scores', 'rouge_scores', 'bleu_sum', 'rouge_sum', 'ndcg_scores', 'run_type'], axis=1)
+st.write("BM25 -> LuceneSearch BM25 by pyserini")
+st.write("MonoBERT ->  MonoBERT from pygaggle which uses 'castorini/monobert-large-msmarco'")
+st.write(BM25_MonoBERT_df)
+
+df = pd.read_csv("data/manual.csv")
+df = df.drop(['Id', 'Creation Time'], axis=1)
 st.write(df)
-df_manual, df_testing_retriver_reranker, df_personal_testing_query_rewriting, df_personal_testing_everything, df_base_testing_query_rewriting, df_base_testing_everything = split_df(df)
-df_dictionary = {
-    'base_testing_query_rewriting': df_base_testing_query_rewriting,
-    'base_testing_everything': df_base_testing_everything,
-    'personal_testing_query_rewriting': df_personal_testing_query_rewriting,
-    'personal_testing_everything': df_personal_testing_everything
-}
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    T5_config = st.radio("What T5 config would you like to see?", ('base', 'personal'))
-with col2:
-    canonical = st.radio("Would you like to see canonical or non-canonical?",
-                         ('testing_query_rewriting', 'testing_everything'))
-with col3:
-    score = st.radio("Would you like to see the bleu or rouge scores?", ('bleu', 'rouge', 'ndcg'))
+for index, row in df.iterrows():
+    ndcg = [
+        row["ndcg_1"] * 100, row["ndcg_2"] * 100, row["ndcg_3"] * 100, row["ndcg_4"] * 100,
+        row["ndcg_5"] * 100,  row["ndcg_6"] * 100, row["ndcg_7"] * 100, row["ndcg_8"] * 100,
+        row["ndcg_9"] * 100, row["ndcg_10"] * 100, row["ndcg_11"] * 100, row["ndcg_12"] * 100
+    ]
+    ndcg3_sum = row["ndcg3_sum"]
+manual = {"ndcg_sum": ndcg3_sum, "ndcg": ndcg}
 
-st.subheader("You're looking at a graph showing the " + score + " score, ran on the T5 " + T5_config +
-             " configuration ran " + canonical)
-
-x = [i for i in range(2, 11)]
-fig = go.Figure()
-for index, row in df_dictionary.get(T5_config + "_" + canonical).iterrows():
-    fig.add_trace(go.Scatter(x=x, y=row[score + "_scores"], mode='lines', name=row['data_usage_type']))
-if score == "ndcg":
-    for index, row in df_testing_retriver_reranker.iterrows():
-        fig.add_trace(go.Scatter(x=x, y=row[score + "_scores"], mode='lines', name="golden standard"))
-fig.update_layout(width=1400, height=700)
-st.plotly_chart(fig, use_container_width=False, sharing="streamlit")
-
+metric_comparison(st)
+everything(st, manual)
+base_vs_personal(st, manual)
+automatic_vs_canonical(st, manual)
+raw_vs_rewritten(st, manual)
